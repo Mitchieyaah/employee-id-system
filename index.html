@@ -68,16 +68,19 @@
     </div>
 
     <script>
-        // 1. MUST: Replace with your latest Google Apps Script Web App URL
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzSKEjX3OwaYs7Ba5_AVdZbJ6JHOx8bH-vljFynDKyXVFDd5nMk2-Wo0v2XwrcHow2PGA/exec";
-
-        // Faster Scanner Configuration
-        let html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
-            fps: 25, 
-            qrbox: { width: 250, height: 250 },
-            aspectRatio: 1.0,
-            formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ] 
-        });
+      // Inside your index.html, update the scanner initialization:
+let html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
+    fps: 20, // 20 is the "sweet spot" for mobile processors
+    qrbox: { width: 250, height: 250 },
+    aspectRatio: 1.0,
+    videoConstraints: {
+        facingMode: "environment",
+        width: { ideal: 640 }, // Lower resolution = faster processing
+        height: { ideal: 480 }
+    },
+    showTorchButtonIfSupported: true,
+    formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ] 
+}););
         
         let currentEmployee = null;
 
@@ -188,3 +191,4 @@
 </body>
 
 </html>
+
