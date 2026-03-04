@@ -50,85 +50,97 @@
         </table>
     </div>
 
+// ... [Keep your existing <head> and <style> sections from the earlier version] ...
+
     <script>
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzSKEjX3OwaYs7Ba5_AVdZbJ6JHOx8bH-vljFynDKyXVFDd5nMk2-Wo0v2XwrcHow2PGA/exec";
+
+        // UI Initialization with Faster Settings
+        let html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
+            fps: 25, // Higher frame rate for speed
+            qrbox: { width: 250, height: 250 },
+            formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ] // Focused scanning
+        });
         
-        // Use the raw Html5Qrcode class for faster performance
-        const html5QrCode = new Html5Qrcode("reader");
         let currentEmployee = null;
-        let scanLogs = [];
-
-        const config = { 
-            fps: 30, // High frame rate for instant detection
-            qrbox: { width: 220, height: 220 },
-            aspectRatio: 1.0
-        };
-
-        function startScanner() {
-            html5QrCode.start(
-                { facingMode: "environment" }, 
-                config, 
-                onScanSuccess
-            );
-        }
 
         function onScanSuccess(decodedText) {
-            // Stop scanning immediately to prevent duplicate scans
-            html5QrCode.pause(true);
-            document.getElementById('loading').style.display = 'flex';
+            if (html5QrcodeScanner.getState() === Html5QrcodeScannerState.SCANNING) {
+                html5QrcodeScanner.pause();
+            }
+
+            document.getElementById('loading').style.display = 'block';
             
             fetch(`${SCRIPT_URL}?id=${decodedText}`)
-            .then(res => res.text())
+            .then(response => response.text())
             .then(text => {
-                const data = JSON.parse(text);
                 document.getElementById('loading').style.display = 'none';
+                const data = JSON.parse(text);
                 
                 if (data.found) {
-                    currentEmployee = { id: decodedText, name: data.name, dept: data.dept, photo: data.photo };
+                    // Logic: If last status was IN, next action is OUT. If last was OUT, next is IN.
+                    const nextAction = (data.lastStatus === "IN") ? "OUT" : "IN";
+                    
+                    currentEmployee = { 
+                        id: decodedText, 
+                        name: data.name, 
+                        dept: data.dept, 
+                        photo: data.photo,
+                        action: nextAction // Store the determined action
+                    };
+                    
                     document.getElementById('emp-name').innerText = data.name;
-                    document.getElementById('emp-dept').innerText = data.dept;
+                    document.getElementById('emp-dept').innerText = data.dept + " (Will be: " + nextAction + ")";
                     document.getElementById('emp-img').src = data.photo || "https://via.placeholder.com/150";
                     document.getElementById('result-card').style.display = 'block';
                 } else {
                     alert("Not Found");
-                    html5QrCode.resume();
+                    resumeScanner();
                 }
             })
-            .catch(() => {
-                alert("Connection Error");
-                html5QrCode.resume();
+            .catch(err => {
+                console.error(err);
+                resumeScanner();
             });
         }
 
-        document.getElementById('confirm-btn').addEventListener('click', () => {
+        document.getElementById('confirm-btn').addEventListener('click', function() {
             if (!currentEmployee) return;
 
             const logEntry = {
-                time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+                time: new Date().toLocaleTimeString(),
                 name: currentEmployee.name,
                 id: currentEmployee.id,
-                action: (scanLogs.filter(l => l.id === currentEmployee.id).pop()?.action === "IN") ? "OUT" : "IN",
+                action: currentEmployee.action, // Use the server-verified action
                 remarks: document.getElementById('remarks-input').value || "None"
             };
 
-            scanLogs.push(logEntry);
             updateTable(logEntry);
 
-            fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(logEntry) });
+            fetch(SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                body: JSON.stringify(logEntry)
+            });
 
             document.getElementById('result-card').style.display = 'none';
-            document.getElementById('remarks-input').value = "";
-            html5QrCode.resume();
+            resumeScanner();
             currentEmployee = null;
         });
 
-        function updateTable(log) {
-            const row = `<tr><td>${log.time}</td><td>${log.name}</td><td><b>${log.action}</b></td></tr>`;
-            document.getElementById('log-body').insertAdjacentHTML('afterbegin', row);
+        function resumeScanner() {
+            if (html5QrcodeScanner.getState() === Html5QrcodeScannerState.PAUSED) {
+                html5QrcodeScanner.resume();
+            }
         }
 
-        // Start automatically on load
-        window.addEventListener('load', startScanner);
+        function updateTable(log) {
+            const body = document.getElementById('log-body');
+            const row = `<tr><td>${log.time}</td><td>${log.name}</td><td><b>${log.action}</b></td></tr>`;
+            body.insertAdjacentHTML('afterbegin', row);
+        }
+
+        html5QrcodeScanner.render(onScanSuccess);
     </script>
 </body>
 </html>
