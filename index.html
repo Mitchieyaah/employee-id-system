@@ -76,10 +76,10 @@
 
             document.getElementById('loading').style.display = 'block';
             
-            fetch(`${SCRIPT_URL}?id=${decodedText}`)
-                .then(response => response.json())
-                .then(data => {
-                    document.getElementById('loading').style.display = 'none';
+fetch(`${SCRIPT_URL}?id=${decodedText}`, {
+    method: 'GET',
+    redirect: 'follow' // This tells the browser to follow Google's internal redirect
+})
                     
                     if (data.found) {
                         currentEmployee = { id: decodedText, name: data.name, dept: data.dept, photo: data.photo };
@@ -152,4 +152,5 @@
         html5QrcodeScanner.render(onScanSuccess);
     </script>
 </body>
+
 </html>
