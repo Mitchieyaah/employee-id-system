@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Turbo ID System</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        :root { --primary: #2c3e50; --success: #2ecc71; --accent: #3498db; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        
+        /* Fast Camera Container */
+        #scanner-container { width: 100%; max-width: 400px; position: relative; border-radius: 15px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.2); background: #000; }
+        #reader { width: 100%; height: 300px; }
+        
+        /* Result UI */
+        #result-card { display: none; margin-top: -20px; z-index: 10; width: 90%; max-width: 380px; background: white; padding: 20px; border-radius: 15px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border-top: 6px solid var(--success); }
+        .emp-photo { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; border: 3px solid #f0f0f0; }
+        .info-value { font-weight: bold; font-size: 1.2rem; color: var(--primary); margin-bottom: 5px; }
+        
+        .btn-confirm { background: var(--success); color: white; border: none; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 15px; font-size: 1rem; }
+        .loading-overlay { display: none; color: white; background: rgba(0,0,0,0.7); position: absolute; top:0; left:0; right:0; bottom:0; align-items: center; justify-content: center; z-index: 20; }
+        
+        .log-container { margin-top: 20px; width: 100%; max-width: 400px; background: white; padding: 15px; border-radius: 12px; font-size: 0.85rem; }
+        table { width: 100%; border-collapse: collapse; }
+        td { padding: 8px; border-bottom: 1px solid #eee; }
+    </style>
+</head>
+<body>
+
+    <h2 style="margin-bottom: 15px; color: var(--primary);">Security Check</h2>
+    
+    <div id="scanner-container">
+        <div id="reader"></div>
+        <div id="loading" class="loading-overlay">VERIFYING...</div>
+    </div>
+
+    <div id="result-card">
+        <img id="emp-img" class="emp-photo" src="" alt="Profile">
+        <div id="emp-name" class="info-value">Loading...</div>
+        <div id="emp-dept" style="color: #7f8c8d; margin-bottom: 10px;">-</div>
+        
+        <input type="text" id="remarks-input" placeholder="Remarks (optional)" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:5px; box-sizing:border-box;">
+        <button id="confirm-btn" class="btn-confirm">CONFIRM & SAVE</button>
+    </div>
+
+    <div class="log-container">
+        <table id="log-table">
+            <tbody id="log-body"></tbody>
+        </table>
+    </div>
+
+    <script>
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzSKEjX3OwaYs7Ba5_AVdZbJ6JHOx8bH-vljFynDKyXVFDd5nMk2-Wo0v2XwrcHow2PGA/exec";
+        
+        // Use the raw Html5Qrcode class for faster performance
+        const html5QrCode = new Html5Qrcode("reader");
+        let currentEmployee = null;
+        let scanLogs = [];
+
+        const config = { 
+            fps: 30, // High frame rate for instant detection
+            qrbox: { width: 220, height: 220 },
+            aspectRatio: 1.0
+        };
+
+        function startScanner() {
+            html5QrCode.start(
+                { facingMode: "environment" }, 
+                config, 
+                onScanSuccess
+            );
+        }
+
+        function onScanSuccess(decodedText) {
+            // Stop scanning immediately to prevent duplicate scans
+            html5QrCode.pause(true);
+            document.getElementById('loading').style.display = 'flex';
+            
+            fetch(`${SCRIPT_URL}?id=${decodedText}`)
+            .then(res => res.text())
+            .then(text => {
+                const data = JSON.parse(text);
+                document.getElementById('loading').style.display = 'none';
+                
+                if (data.found) {
+                    currentEmployee = { id: decodedText, name: data.name, dept: data.dept, photo: data.photo };
+                    document.getElementById('emp-name').innerText = data.name;
+                    document.getElementById('emp-dept').innerText = data.dept;
+                    document.getElementById('emp-img').src = data.photo || "https://via.placeholder.com/150";
+                    document.getElementById('result-card').style.display = 'block';
+                } else {
+                    alert("Not Found");
+                    html5QrCode.resume();
+                }
+            })
+            .catch(() => {
+                alert("Connection Error");
+                html5QrCode.resume();
+            });
+        }
+
+        document.getElementById('confirm-btn').addEventListener('click', () => {
+            if (!currentEmployee) return;
+
+            const logEntry = {
+                time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+                name: currentEmployee.name,
+                id: currentEmployee.id,
+                action: (scanLogs.filter(l => l.id === currentEmployee.id).pop()?.action === "IN") ? "OUT" : "IN",
+                remarks: document.getElementById('remarks-input').value || "None"
+            };
+
+            scanLogs.push(logEntry);
+            updateTable(logEntry);
+
+            fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(logEntry) });
+
+            document.getElementById('result-card').style.display = 'none';
+            document.getElementById('remarks-input').value = "";
+            html5QrCode.resume();
+            currentEmployee = null;
+        });
+
+        function updateTable(log) {
+            const row = `<tr><td>${log.time}</td><td>${log.name}</td><td><b>${log.action}</b></td></tr>`;
+            document.getElementById('log-body').insertAdjacentHTML('afterbegin', row);
+        }
+
+        // Start automatically on load
+        window.addEventListener('load', startScanner);
+    </script>
+</body>
+</html>
