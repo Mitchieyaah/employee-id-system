@@ -3,27 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Professional Gate System</title>
+    <title>Gate Security - Optimized</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         :root { --primary: #2c3e50; --success: #2ecc71; --danger: #e74c3c; --accent: #3498db; }
         body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
         
-        /* Fast Scanner Container */
-        #reader { width: 100%; max-width: 450px; background: white; padding: 10px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 2px solid #ddd; }
+        #reader { width: 100%; max-width: 450px; background: white; padding: 10px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 2px solid #ddd; overflow: hidden; }
         
-        /* Result Card - Dynamic Borders */
         #result-card { display: none; margin-top: 20px; width: 100%; max-width: 450px; background: white; padding: 25px; border-radius: 12px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border-top: 10px solid var(--success); }
         .emp-photo { width: 140px; height: 140px; border-radius: 50%; object-fit: cover; margin-bottom: 15px; border: 4px solid #eee; background: #fafafa; }
         .info-label { color: #7f8c8d; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; margin-top: 10px; }
         .info-value { font-weight: bold; font-size: 1.3rem; color: var(--primary); margin-bottom: 5px; }
         
-        /* Status Badge */
-        #status-badge { display: inline-block; padding: 5px 15px; border-radius: 20px; color: white; font-weight: bold; font-size: 0.9rem; margin-bottom: 15px; text-transform: uppercase; }
+        #status-badge { display: inline-block; padding: 6px 20px; border-radius: 20px; color: white; font-weight: bold; font-size: 0.9rem; margin-bottom: 15px; text-transform: uppercase; }
         
         #remarks-section { margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px; }
         input[type="text"] { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 1rem; margin-bottom: 15px; }
-        .btn-confirm { background: var(--success); color: white; border: none; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; font-size: 1.1rem; }
+        .btn-confirm { background: var(--success); color: white; border: none; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; font-size: 1.1rem; transition: transform 0.1s; }
+        .btn-confirm:active { transform: scale(0.98); }
         
         .log-container { margin-top: 30px; width: 100%; max-width: 500px; background: white; padding: 20px; border-radius: 12px; }
         table { width: 100%; border-collapse: collapse; margin-top: 15px; }
@@ -33,34 +31,34 @@
 </head>
 <body>
 
-    <h2 style="color: var(--primary); margin-bottom: 20px;">Gate Security Terminal</h2>
+    <h2 style="color: var(--primary); margin-bottom: 20px;">Gate Terminal</h2>
     
     <div id="reader"></div>
-    <div id="loading" class="loading-overlay">⌛ Fetching Live Status...</div>
+    <div id="loading" class="loading-overlay">⌛ Syncing with Sheets...</div>
 
     <div id="result-card">
-        <div id="status-badge">Processing...</div>
+        <div id="status-badge">...</div>
         <br>
         <img id="emp-img" class="emp-photo" src="" alt="Profile">
-        <div class="info-label">Employee Name</div>
+        <div class="info-label">Name</div>
         <div id="emp-name" class="info-value">-</div>
         <div class="info-label">Department</div>
         <div id="emp-dept" class="info-value">-</div>
         
         <div id="remarks-section">
-            <input type="text" id="remarks-input" placeholder="Add remarks (optional)">
-            <button id="confirm-btn" class="btn-confirm">CONFIRM ACTION</button>
+            <input type="text" id="remarks-input" placeholder="Remarks (optional)">
+            <button id="confirm-btn" class="btn-confirm">CONFIRM</button>
         </div>
     </div>
 
     <div class="log-container">
-        <h3 style="margin:0">Session Activity</h3>
+        <h3 style="margin:0">Today's Activity</h3>
         <table id="log-table">
             <thead>
                 <tr>
                     <th>Time</th>
                     <th>Name</th>
-                    <th>Action</th>
+                    <th>Status</th>
                 </tr>
             </thead>
             <tbody id="log-body"></tbody>
@@ -68,23 +66,28 @@
     </div>
 
     <script>
-      // Inside your index.html, update the scanner initialization:
-let html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
-    fps: 20, // 20 is the "sweet spot" for mobile processors
-    qrbox: { width: 250, height: 250 },
-    aspectRatio: 1.0,
-    videoConstraints: {
-        facingMode: "environment",
-        width: { ideal: 640 }, // Lower resolution = faster processing
-        height: { ideal: 480 }
-    },
-    showTorchButtonIfSupported: true,
-    formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ] 
-}););
+        // REPLACE WITH YOUR APPS SCRIPT URL
+        const SCRIPT_URL = "https://script.google.com/macros/library/d/1Ot15mbmaEXSUWkoRPFp_Gg6fk5u6FwB0Du-UcSLzGg70WFiEdmpUnxiw/10";
+
+        // Performance Optimized Config
+        let html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
+            fps: 15, // Lowered to 15 to prevent mobile CPU lag
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1.0,
+            videoConstraints: {
+                facingMode: "environment",
+                width: { ideal: 640 }, // Optimized resolution
+                height: { ideal: 480 }
+            },
+            formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ] 
+        });
         
         let currentEmployee = null;
 
         function onScanSuccess(decodedText) {
+            // Instant feedback
+            if (navigator.vibrate) navigator.vibrate(100); 
+
             if (html5QrcodeScanner.getState() === Html5QrcodeScannerState.SCANNING) {
                 html5QrcodeScanner.pause();
             }
@@ -92,7 +95,6 @@ let html5QrcodeScanner = new Html5QrcodeScanner("reader", {
             document.getElementById('loading').style.display = 'block';
             document.getElementById('result-card').style.display = 'none';
             
-            // Call the script - It will return the last status from the sheet
             fetch(`${SCRIPT_URL}?id=${decodedText}`)
             .then(response => response.text())
             .then(text => {
@@ -100,7 +102,6 @@ let html5QrcodeScanner = new Html5QrcodeScanner("reader", {
                 const data = JSON.parse(text);
                 
                 if (data.found) {
-                    // Logic: Use the status fetched from the Sheets memory
                     const nextAction = (data.lastStatus === "IN") ? "OUT" : "IN";
                     
                     currentEmployee = { 
@@ -111,15 +112,13 @@ let html5QrcodeScanner = new Html5QrcodeScanner("reader", {
                         action: nextAction 
                     };
                     
-                    // Update UI
                     document.getElementById('emp-name').innerText = data.name;
                     document.getElementById('emp-dept').innerText = data.dept;
                     document.getElementById('emp-img').src = data.photo || "https://via.placeholder.com/150?text=No+Photo";
                     
-                    // Visual Status Styling
                     const badge = document.getElementById('status-badge');
                     const card = document.getElementById('result-card');
-                    badge.innerText = "ACTION: " + nextAction;
+                    badge.innerText = "NEXT: " + nextAction;
                     
                     if(nextAction === "IN") {
                         badge.style.backgroundColor = "var(--success)";
@@ -131,12 +130,12 @@ let html5QrcodeScanner = new Html5QrcodeScanner("reader", {
 
                     card.style.display = 'block';
                 } else {
-                    alert("ID Not Recognized: " + decodedText);
+                    alert("ID Error: " + decodedText);
                     resumeScanner();
                 }
             })
             .catch(err => {
-                alert("Connection Error. Check your internet.");
+                alert("Network timeout. Please refresh.");
                 document.getElementById('loading').style.display = 'none';
                 resumeScanner();
             });
@@ -153,17 +152,15 @@ let html5QrcodeScanner = new Html5QrcodeScanner("reader", {
                 remarks: document.getElementById('remarks-input').value || "None"
             };
 
-            // Update local table for guard's view
             updateTable(logEntry);
 
-            // Send to Google Sheets (POST)
+            // POST to Google
             fetch(SCRIPT_URL, {
                 method: 'POST',
                 mode: 'no-cors',
                 body: JSON.stringify(logEntry)
             });
 
-            // Reset UI for next scan
             document.getElementById('result-card').style.display = 'none';
             document.getElementById('remarks-input').value = "";
             resumeScanner();
@@ -189,6 +186,4 @@ let html5QrcodeScanner = new Html5QrcodeScanner("reader", {
         html5QrcodeScanner.render(onScanSuccess);
     </script>
 </body>
-
 </html>
-
